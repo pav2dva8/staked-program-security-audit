@@ -1,0 +1,18 @@
+{
+  "name": "staked-contract-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Devnet helper scripts for the staked Anchor program.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "create:pump-devnet": "node scripts/create-pump-devnet-token.mjs",
+    "volume:pump-devnet": "node scripts/run-pump-devnet-volume.mjs",
+    "stake:test-wallets": "node scripts/stake-devnet-test-wallets.mjs",
+    "check:scripts": "node --check scripts/create-pump-devnet-token.mjs && node --check scripts/run-pump-devnet-volume.mjs && node --check scripts/stake-devnet-test-wallets.mjs"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.98.4",
+    "buffer": "^6.0.3"
+  }
+}

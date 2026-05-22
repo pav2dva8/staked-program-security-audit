@@ -1,0 +1,11 @@
+[workspace]
+members = ["programs/staking"]
+resolver = "2"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
+overflow-checks = false
+panic = "abort"
+strip = true

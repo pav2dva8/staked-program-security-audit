@@ -1,0 +1,25 @@
+# Rust and Anchor output
+target/
+.anchor/
+test-ledger/
+ledger/
+
+# Node helper dependencies
+node_modules/
+
+# Generated local wallets and keypairs
+.devnet-test-wallets/
+*.json
+!package.json
+!package-lock.json
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Logs and editor state
+logs/
+*.log
+.DS_Store
+Thumbs.db
