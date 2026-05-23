@@ -406,7 +406,7 @@ pub(crate) fn claim_pump_shared_quote_creator_fees<'info>(
         &ctx.accounts.pump_program.to_account_info(),
         &shares,
         ShareholderAccountMode::Token {
-            fee_owner: ctx.accounts.fee_owner.key(),
+            fee_owner: ctx.accounts.fee_owner.to_account_info(),
             fee_owner_token_account: ctx.accounts.fee_owner_token_ata.to_account_info(),
             quote_mint: ctx.accounts.quote_mint.key(),
             quote_token_program: ctx.accounts.quote_token_program.key(),
@@ -748,7 +748,7 @@ pub(crate) fn claim_pumpswap_shared_creator_fees<'info>(
         &ctx.accounts.pump_program.to_account_info(),
         &shares,
         ShareholderAccountMode::Token {
-            fee_owner: ctx.accounts.fee_owner.key(),
+            fee_owner: ctx.accounts.fee_owner.to_account_info(),
             fee_owner_token_account: ctx.accounts.fee_owner_wsol_ata.to_account_info(),
             quote_mint: ctx.accounts.quote_mint.key(),
             quote_token_program: ctx.accounts.quote_token_program.key(),
@@ -890,7 +890,7 @@ pub(crate) fn claim_pumpswap_shared_quote_creator_fees<'info>(
         &ctx.accounts.pump_program.to_account_info(),
         &shares,
         ShareholderAccountMode::Token {
-            fee_owner: ctx.accounts.fee_owner.key(),
+            fee_owner: ctx.accounts.fee_owner.to_account_info(),
             fee_owner_token_account: ctx.accounts.fee_owner_token_ata.to_account_info(),
             quote_mint: ctx.accounts.quote_mint.key(),
             quote_token_program: ctx.accounts.quote_token_program.key(),
@@ -925,7 +925,7 @@ enum ShareholderAccountMode<'info> {
         fee_owner: AccountInfo<'info>,
     },
     Token {
-        fee_owner: Pubkey,
+        fee_owner: AccountInfo<'info>,
         fee_owner_token_account: AccountInfo<'info>,
         quote_mint: Pubkey,
         quote_token_program: Pubkey,
@@ -1090,9 +1090,27 @@ fn append_shareholder_accounts<'info>(
             quote_token_program,
         } => {
             for share in shares {
+                if share.address == fee_owner.key() {
+                    accounts.push(AccountMeta::new(fee_owner.key(), false));
+                    infos.push(fee_owner.clone());
+                    continue;
+                }
+
+                let recipient = remaining_accounts
+                    .get(remaining_index)
+                    .ok_or(PobError::InvalidPumpAccount)?;
+                remaining_index = remaining_index
+                    .checked_add(1)
+                    .ok_or(PobError::MathOverflow)?;
+                require_keys_eq!(recipient.key(), share.address, PobError::InvalidPumpAccount);
+                accounts.push(AccountMeta::new(recipient.key(), false));
+                infos.push(recipient.clone());
+            }
+
+            for share in shares {
                 let expected_token_account =
                     associated_token_address(&share.address, &quote_token_program, &quote_mint);
-                if share.address == fee_owner {
+                if share.address == fee_owner.key() {
                     require_keys_eq!(
                         fee_owner_token_account.key(),
                         expected_token_account,
@@ -1103,19 +1121,19 @@ fn append_shareholder_accounts<'info>(
                     continue;
                 }
 
-                let recipient = remaining_accounts
+                let recipient_token_account = remaining_accounts
                     .get(remaining_index)
                     .ok_or(PobError::InvalidPumpAccount)?;
                 remaining_index = remaining_index
                     .checked_add(1)
                     .ok_or(PobError::MathOverflow)?;
                 require_keys_eq!(
-                    recipient.key(),
+                    recipient_token_account.key(),
                     expected_token_account,
                     PobError::InvalidTokenAccount
                 );
-                accounts.push(AccountMeta::new(recipient.key(), false));
-                infos.push(recipient.clone());
+                accounts.push(AccountMeta::new(recipient_token_account.key(), false));
+                infos.push(recipient_token_account.clone());
             }
         }
     }
@@ -1160,4 +1178,100 @@ fn require_shared_pumpswap_vaults(
         quote_mint,
         quote_token_program,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_account_info<'a>(
+        key: &'a Pubkey,
+        owner: &'a Pubkey,
+        lamports: &'a mut u64,
+        data: &'a mut [u8],
+    ) -> AccountInfo<'a> {
+        AccountInfo::new(key, false, true, lamports, data, owner, false, 0)
+    }
+
+    #[test]
+    fn token_shareholder_accounts_include_wallets_then_token_accounts() {
+        let fee_owner = Pubkey::new_unique();
+        let other_shareholder = Pubkey::new_unique();
+        let quote_mint = Pubkey::new_unique();
+        let quote_token_program = TOKEN_PROGRAM_ID;
+        let fee_owner_token_account =
+            associated_token_address(&fee_owner, &quote_token_program, &quote_mint);
+        let other_token_account =
+            associated_token_address(&other_shareholder, &quote_token_program, &quote_mint);
+        let owner = system_program::ID;
+        let shares = [
+            PumpFeeShare { address: fee_owner },
+            PumpFeeShare {
+                address: other_shareholder,
+            },
+        ];
+
+        let mut fee_owner_lamports = 1;
+        let mut fee_owner_data = [];
+        let fee_owner_info = test_account_info(
+            &fee_owner,
+            &owner,
+            &mut fee_owner_lamports,
+            &mut fee_owner_data,
+        );
+        let mut fee_owner_token_lamports = 1;
+        let mut fee_owner_token_data = [];
+        let fee_owner_token_info = test_account_info(
+            &fee_owner_token_account,
+            &quote_token_program,
+            &mut fee_owner_token_lamports,
+            &mut fee_owner_token_data,
+        );
+        let mut other_lamports = 1;
+        let mut other_data = [];
+        let other_info = test_account_info(
+            &other_shareholder,
+            &owner,
+            &mut other_lamports,
+            &mut other_data,
+        );
+        let mut other_token_lamports = 1;
+        let mut other_token_data = [];
+        let other_token_info = test_account_info(
+            &other_token_account,
+            &quote_token_program,
+            &mut other_token_lamports,
+            &mut other_token_data,
+        );
+        let remaining_accounts = [other_info.clone(), other_token_info.clone()];
+        let mut accounts = Vec::new();
+        let mut infos = Vec::new();
+
+        append_shareholder_accounts(
+            &mut accounts,
+            &mut infos,
+            &shares,
+            ShareholderAccountMode::Token {
+                fee_owner: fee_owner_info,
+                fee_owner_token_account: fee_owner_token_info,
+                quote_mint,
+                quote_token_program,
+            },
+            &remaining_accounts,
+        )
+        .unwrap();
+
+        let account_keys: Vec<Pubkey> = accounts.iter().map(|account| account.pubkey).collect();
+        assert_eq!(
+            account_keys,
+            vec![
+                fee_owner,
+                other_shareholder,
+                fee_owner_token_account,
+                other_token_account
+            ]
+        );
+        let info_keys: Vec<Pubkey> = infos.iter().map(|account| account.key()).collect();
+        assert_eq!(info_keys, account_keys);
+    }
 }
