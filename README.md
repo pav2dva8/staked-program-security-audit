@@ -20,9 +20,9 @@
     <br />
     <a href="programs/staking/src">View Source</a>
     &middot;
-    <a href="https://github.com/iceypump/staked-contract/issues/new?labels=bug">Report Bug</a>
+    <a href="https://github.com/iceypump/staked/issues/new?labels=bug">Report Bug</a>
     &middot;
-    <a href="https://github.com/iceypump/staked-contract/issues/new?labels=enhancement">Request Feature</a>
+    <a href="https://github.com/iceypump/staked/issues/new?labels=enhancement">Request Feature</a>
   </p>
 </div>
 
@@ -66,7 +66,7 @@ unwrapping, and protocol-fee routing.
 Current status:
 
 - Program name: `staked`
-- Program ID: `3skopQVdqns5x5GjU2c3S4nEcmVbDTkMoZWRaVLsJrAa`
+- Program ID: `aZPKJ99yjfE6MjZ5isXNjm3ndanBdx5gX35nwmLBANK`
 - Anchor version: `0.32.1`
 - Network target: Solana
 - Audit status: unaudited
@@ -82,6 +82,7 @@ staking rules, reward flows, and instruction details.
 * [![Solana][Solana]][Solana-url]
 * [![Anchor][Anchor]][Anchor-url]
 * [![Node.js][Node.js]][Node-url]
+* [![Solana Verify][Solana-Verify]][Solana-Verify-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -112,15 +113,26 @@ Install the Solana and Anchor development toolchain:
   npm --version
   ```
 
+For verifiable builds, also install Docker and the Solana Verify CLI:
+
+* Docker
+  ```sh
+  docker --version
+  ```
+* Solana Verify CLI
+  ```sh
+  npm run install:solana-verify
+  ```
+
 ### Installation
 
 1. Clone the repo
    ```sh
-   git clone https://github.com/iceypump/staked-contract.git
+   git clone https://github.com/iceypump/staked.git
    ```
 2. Enter the project directory
    ```sh
-   cd staked-contract
+   cd staked
    ```
 3. Install script dependencies
    ```sh
@@ -141,6 +153,13 @@ For a lighter Rust-only check:
 cargo check
 ```
 
+For a deterministic Solana program build using Solana Verify:
+
+```sh
+npm run build:verifiable
+npm run hash:verifiable
+```
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- USAGE EXAMPLES -->
@@ -154,6 +173,18 @@ npm run create:pump-devnet -- --quote sol
 npm run volume:pump-devnet -- --mint <MINT>
 npm run stake:test-wallets -- --mint <MINT>
 ```
+
+Verifiable build commands:
+
+```sh
+npm run install:solana-verify
+npm run build:verifiable
+npm run hash:verifiable
+npm run verify:repo -- --url <RPC_URL> --commit-hash <COMMIT_HASH>
+```
+
+Deploy the `.so` produced by `npm run build:verifiable` when you intend to verify the on-chain
+program. Rebuilding with `anchor build` before deploy can produce a different executable hash.
 
 The helper scripts default to Solana Devnet and `~/.config/solana/id.json`. Generated local test
 wallets are written to `.devnet-test-wallets/`, which is intentionally ignored.
@@ -190,7 +221,7 @@ _For more details, see the [program documentation](programs/staking/README.md)._
 - [ ] Add independent audit report
 - [ ] Add client SDK examples
 
-See the [open issues](https://github.com/iceypump/staked-contract/issues) for a full list of
+See the [open issues](https://github.com/iceypump/staked/issues) for a full list of
 proposed features and known issues.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -220,8 +251,8 @@ open a pull request, or open an issue with the `enhancement` label.
 
 ### Top Contributors
 
-<a href="https://github.com/iceypump/staked-contract/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=iceypump/staked-contract" alt="contrib.rocks image" />
+<a href="https://github.com/iceypump/staked/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=iceypump/staked" alt="contrib.rocks image" />
 </a>
 
 <!-- LICENSE -->
@@ -238,7 +269,7 @@ See [LICENSE](LICENSE) for more information.
 
 (X) Iceypump - [@icetypump](https://x.com/iceyypump)
 
-Project Link: [https://github.com/iceypump/staked-contract](https://github.com/iceypump/staked-contract)
+Project Link: [https://github.com/iceypump/staked](https://github.com/iceypump/staked)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -253,15 +284,15 @@ Project Link: [https://github.com/iceypump/staked-contract](https://github.com/i
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[contributors-shield]: https://img.shields.io/github/contributors/iceypump/staked-contract.svg?style=for-the-badge
-[contributors-url]: https://github.com/iceypump/staked-contract/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/iceypump/staked-contract.svg?style=for-the-badge
-[forks-url]: https://github.com/iceypump/staked-contract/network/members
-[stars-shield]: https://img.shields.io/github/stars/iceypump/staked-contract.svg?style=for-the-badge
-[stars-url]: https://github.com/iceypump/staked-contract/stargazers
-[issues-shield]: https://img.shields.io/github/issues/iceypump/staked-contract.svg?style=for-the-badge
-[issues-url]: https://github.com/iceypump/staked-contract/issues
-[license-shield]: https://img.shields.io/github/license/iceypump/staked-contract.svg?style=for-the-badge
+[contributors-shield]: https://img.shields.io/github/contributors/iceypump/staked.svg?style=for-the-badge
+[contributors-url]: https://github.com/iceypump/staked/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/iceypump/staked.svg?style=for-the-badge
+[forks-url]: https://github.com/iceypump/staked/network/members
+[stars-shield]: https://img.shields.io/github/stars/iceypump/staked.svg?style=for-the-badge
+[stars-url]: https://github.com/iceypump/staked/stargazers
+[issues-shield]: https://img.shields.io/github/issues/iceypump/staked.svg?style=for-the-badge
+[issues-url]: https://github.com/iceypump/staked/issues
+[license-shield]: https://img.shields.io/github/license/iceypump/staked.svg?style=for-the-badge
 [license-url]: LICENSE
 [Rust]: https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white
 [Rust-url]: https://www.rust-lang.org/
@@ -271,3 +302,5 @@ Project Link: [https://github.com/iceypump/staked-contract](https://github.com/i
 [Anchor-url]: https://www.anchor-lang.com/
 [Node.js]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
 [Node-url]: https://nodejs.org/
+[Solana-Verify]: https://img.shields.io/badge/Solana_Verify-14F195?style=for-the-badge&logo=solana&logoColor=black
+[Solana-Verify-url]: https://github.com/solana-foundation/solana-verifiable-build

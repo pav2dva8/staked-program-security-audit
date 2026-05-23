@@ -30,6 +30,30 @@ fn write_token_account_data(data: &mut [u8], mint: &Pubkey, authority: &Pubkey, 
         .copy_from_slice(&amount.to_le_bytes());
 }
 
+fn write_bonding_curve_data(data: &mut [u8], creator: &Pubkey) {
+    data[..8].copy_from_slice(&PUMP_BONDING_CURVE_DISCRIMINATOR);
+    data[PUMP_BONDING_CURVE_CREATOR_OFFSET..PUMP_BONDING_CURVE_CREATOR_OFFSET + PUBKEY_BYTES]
+        .copy_from_slice(creator.as_ref());
+}
+
+fn write_sharing_config_data(data: &mut [u8], mint: &Pubkey, shareholders: &[(Pubkey, u16)]) {
+    data[..8].copy_from_slice(&PUMP_FEES_SHARING_CONFIG_DISCRIMINATOR);
+    data[PUMP_FEES_SHARING_CONFIG_STATUS_OFFSET] = PUMP_FEES_SHARING_CONFIG_ACTIVE_STATUS;
+    data[PUMP_FEES_SHARING_CONFIG_MINT_OFFSET..PUMP_FEES_SHARING_CONFIG_MINT_OFFSET + PUBKEY_BYTES]
+        .copy_from_slice(mint.as_ref());
+    data[PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET
+        ..PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET + 4]
+        .copy_from_slice(&(shareholders.len() as u32).to_le_bytes());
+
+    let mut offset = PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET + 4;
+    for (address, share_bps) in shareholders {
+        data[offset..offset + PUBKEY_BYTES].copy_from_slice(address.as_ref());
+        offset += PUBKEY_BYTES;
+        data[offset..offset + 2].copy_from_slice(&share_bps.to_le_bytes());
+        offset += 2;
+    }
+}
+
 #[test]
 fn mint_validation_accepts_token_2022_mints() {
     let mint_key = Pubkey::new_unique();
@@ -52,6 +76,123 @@ fn mint_validation_accepts_token_2022_mints() {
         require_mint_account(&account).unwrap(),
         TOKEN_2022_PROGRAM_ID
     );
+}
+
+#[test]
+fn pump_sharing_config_pda_uses_pump_fees_program() {
+    let mint = Pubkey::new_from_array([20; 32]);
+    let expected =
+        Pubkey::find_program_address(&[b"sharing-config", mint.as_ref()], &PUMP_FEES_PROGRAM_ID).0;
+
+    assert_eq!(pump_sharing_config_pda(&mint).0, expected);
+}
+
+#[test]
+fn sharing_config_validation_requires_fee_owner_share() {
+    let mint = Pubkey::new_from_array([21; 32]);
+    let fee_owner = fee_owner_pda(&mint).0;
+    let sharing_config = pump_sharing_config_pda(&mint).0;
+    let mut lamports = 1_000_000;
+    let mut data =
+        vec![0u8; PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET + 4 + PUMP_FEES_SHAREHOLDER_LEN];
+    write_sharing_config_data(&mut data, &mint, &[(fee_owner, 10_000)]);
+
+    let account = AccountInfo::new(
+        &sharing_config,
+        false,
+        false,
+        &mut lamports,
+        &mut data,
+        &PUMP_FEES_PROGRAM_ID,
+        false,
+        0,
+    );
+
+    let shares = require_pump_sharing_config(&account, &mint, &fee_owner).unwrap();
+    assert_eq!(shares.len(), 1);
+    assert_eq!(shares[0].address, fee_owner);
+}
+
+#[test]
+fn sharing_config_validation_rejects_missing_fee_owner_share() {
+    let mint = Pubkey::new_from_array([22; 32]);
+    let fee_owner = fee_owner_pda(&mint).0;
+    let other = Pubkey::new_unique();
+    let sharing_config = pump_sharing_config_pda(&mint).0;
+    let mut lamports = 1_000_000;
+    let mut data =
+        vec![0u8; PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET + 4 + PUMP_FEES_SHAREHOLDER_LEN];
+    write_sharing_config_data(&mut data, &mint, &[(other, 10_000)]);
+
+    let account = AccountInfo::new(
+        &sharing_config,
+        false,
+        false,
+        &mut lamports,
+        &mut data,
+        &PUMP_FEES_PROGRAM_ID,
+        false,
+        0,
+    );
+
+    assert!(require_pump_sharing_config(&account, &mint, &fee_owner).is_err());
+}
+
+#[test]
+fn creator_route_accepts_direct_or_sharing_config_creator() {
+    let mint = Pubkey::new_from_array([23; 32]);
+    let fee_owner = fee_owner_pda(&mint).0;
+    let bonding_curve = pump_bonding_curve_pda(&mint).0;
+    let sharing_config = pump_sharing_config_pda(&mint).0;
+    let mut curve_lamports = 1_000_000;
+    let mut sharing_lamports = 1_000_000;
+    let mut direct_curve_data = [0u8; PUMP_BONDING_CURVE_CREATOR_OFFSET + PUBKEY_BYTES];
+    write_bonding_curve_data(&mut direct_curve_data, &fee_owner);
+    let direct_curve_account = AccountInfo::new(
+        &bonding_curve,
+        false,
+        false,
+        &mut curve_lamports,
+        &mut direct_curve_data,
+        &PUMP_PROGRAM_ID,
+        false,
+        0,
+    );
+    assert!(require_pump_creator_route(&direct_curve_account, &mint, &fee_owner, None).is_ok());
+
+    let mut shared_curve_data = [0u8; PUMP_BONDING_CURVE_CREATOR_OFFSET + PUBKEY_BYTES];
+    write_bonding_curve_data(&mut shared_curve_data, &sharing_config);
+    let shared_curve_account = AccountInfo::new(
+        &bonding_curve,
+        false,
+        false,
+        &mut curve_lamports,
+        &mut shared_curve_data,
+        &PUMP_PROGRAM_ID,
+        false,
+        0,
+    );
+    let mut sharing_data =
+        vec![0u8; PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET + 4 + PUMP_FEES_SHAREHOLDER_LEN];
+    write_sharing_config_data(&mut sharing_data, &mint, &[(fee_owner, 10_000)]);
+    let sharing_account = AccountInfo::new(
+        &sharing_config,
+        false,
+        false,
+        &mut sharing_lamports,
+        &mut sharing_data,
+        &PUMP_FEES_PROGRAM_ID,
+        false,
+        0,
+    );
+
+    assert!(require_pump_creator_route(
+        &shared_curve_account,
+        &mint,
+        &fee_owner,
+        Some(&sharing_account),
+    )
+    .is_ok());
 }
 
 #[test]

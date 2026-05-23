@@ -22,10 +22,11 @@ pub(crate) fn initialize_launch(ctx: Context<InitializeLaunch>) -> Result<()> {
         &token_program,
     )?;
     let fee_owner = ctx.accounts.fee_owner.key();
-    require_verified_bonding_curve(
+    require_pump_creator_route(
         &ctx.accounts.bonding_curve.to_account_info(),
         &ctx.accounts.mint.key(),
         &fee_owner,
+        ctx.remaining_accounts.first(),
     )?;
 
     let launch = &mut ctx.accounts.launch;
@@ -59,13 +60,15 @@ pub(crate) fn stake(ctx: Context<Stake>, amount: u64, lock_days: u16) -> Result<
         &ctx.accounts.launch.token_program,
     )?;
     if ctx.accounts.launch.total_weighted_stake > 0 {
-        require_clean_creator_vault(
+        require_clean_creator_vault_for_route(
             &ctx.accounts.creator_vault.to_account_info(),
             &ctx.accounts.launch.mint,
+            ctx.remaining_accounts,
         )?;
-        require_clean_pumpswap_creator_vault(
+        require_clean_pumpswap_creator_vault_for_route(
             &ctx.accounts.coin_creator_vault_ata.to_account_info(),
             &ctx.accounts.launch.mint,
+            ctx.remaining_accounts,
         )?;
     }
 
@@ -122,13 +125,15 @@ pub(crate) fn increase_stake(
         &ctx.accounts.launch.key(),
         &ctx.accounts.launch.token_program,
     )?;
-    require_clean_creator_vault(
+    require_clean_creator_vault_for_route(
         &ctx.accounts.creator_vault.to_account_info(),
         &ctx.accounts.launch.mint,
+        ctx.remaining_accounts,
     )?;
-    require_clean_pumpswap_creator_vault(
+    require_clean_pumpswap_creator_vault_for_route(
         &ctx.accounts.coin_creator_vault_ata.to_account_info(),
         &ctx.accounts.launch.mint,
+        ctx.remaining_accounts,
     )?;
 
     let multiplier_bps = lock_multiplier_bps(lock_days)?;

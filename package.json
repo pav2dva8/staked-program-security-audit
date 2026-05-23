@@ -9,6 +9,10 @@
     "create:pump-devnet": "node scripts/create-pump-devnet-token.mjs",
     "volume:pump-devnet": "node scripts/run-pump-devnet-volume.mjs",
     "stake:test-wallets": "node scripts/stake-devnet-test-wallets.mjs",
+    "install:solana-verify": "cargo install solana-verify --locked --version 0.5.0",
+    "build:verifiable": "solana-verify build --library-name staked",
+    "hash:verifiable": "solana-verify get-executable-hash target/deploy/staked.so",
+    "verify:repo": "solana-verify verify-from-repo --program-id aZPKJ99yjfE6MjZ5isXNjm3ndanBdx5gX35nwmLBANK https://github.com/iceypump/staked --library-name staked",
     "check:scripts": "node --check scripts/create-pump-devnet-token.mjs && node --check scripts/run-pump-devnet-volume.mjs && node --check scripts/stake-devnet-test-wallets.mjs"
   },
   "dependencies": {

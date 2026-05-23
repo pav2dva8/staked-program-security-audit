@@ -28,6 +28,10 @@ pub(crate) fn pump_creator_vault_pda(creator: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(&[b"creator-vault", creator.as_ref()], &PUMP_PROGRAM_ID)
 }
 
+pub(crate) fn pump_sharing_config_pda(mint: &Pubkey) -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[b"sharing-config", mint.as_ref()], &PUMP_FEES_PROGRAM_ID)
+}
+
 pub(crate) fn pump_event_authority_pda() -> (Pubkey, u8) {
     Pubkey::find_program_address(&[b"__event_authority"], &PUMP_PROGRAM_ID)
 }

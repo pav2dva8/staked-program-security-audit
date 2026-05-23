@@ -16,9 +16,9 @@ pub struct InitializeLaunch<'info> {
         bump
     )]
     pub launch: Account<'info, LaunchConfig>,
-    /// CHECK: Validated as Pump.fun bonding curve PDA for mint with fee_owner as creator.
+    /// CHECK: Validated as Pump.fun bonding curve PDA whose creator is fee_owner or sharing_config.
     pub bonding_curve: UncheckedAccount<'info>,
-    /// CHECK: Program-derived creator account checked through bonding_curve.creator.
+    /// CHECK: Program-derived creator/shareholder account checked through bonding_curve creator route.
     #[account(seeds = [b"fee-owner", mint.key().as_ref()], bump)]
     pub fee_owner: UncheckedAccount<'info>,
     /// CHECK: Validated as the canonical launch ATA for this mint.
@@ -284,6 +284,106 @@ pub struct ClaimPumpQuoteCreatorFees<'info> {
 }
 
 #[derive(Accounts)]
+pub struct ClaimPumpSharedCreatorFees<'info> {
+    #[account(mut, seeds = [b"launch", launch.mint.as_ref()], bump)]
+    pub launch: Account<'info, LaunchConfig>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: Validated against launch.mint.
+    pub mint: UncheckedAccount<'info>,
+    /// CHECK: Validated as Pump.fun bonding curve PDA whose creator is sharing_config.
+    pub bonding_curve: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical Pump Fees sharing_config PDA for launch.mint.
+    pub sharing_config: UncheckedAccount<'info>,
+    /// CHECK: Program-derived shareholder account used as the Staked recipient.
+    #[account(mut, seeds = [b"fee-owner", launch.mint.as_ref()], bump)]
+    pub fee_owner: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun creator-vault PDA seeds for sharing_config.
+    #[account(mut)]
+    pub creator_vault: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for creator_vault when quote_mint is non-native.
+    #[account(mut)]
+    pub creator_vault_quote_token_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated as PDA(["protocol-fees", launch.mint]) and stores SOL protocol fees.
+    #[account(mut, seeds = [b"protocol-fees", launch.mint.as_ref()], bump)]
+    pub protocol_fee_vault: UncheckedAccount<'info>,
+    /// CHECK: Must be the native SOL mint because rewards are paid as SOL.
+    pub quote_mint: UncheckedAccount<'info>,
+    /// CHECK: Must be the standard SPL Token program for WSOL.
+    pub quote_token_program: UncheckedAccount<'info>,
+    /// CHECK: Must be the associated token program.
+    pub associated_token_program: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun event-authority PDA seeds.
+    pub pump_event_authority: UncheckedAccount<'info>,
+    /// CHECK: Must be the official Pump.fun program id.
+    pub pump_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimPumpSharedQuoteCreatorFees<'info> {
+    #[account(mut, seeds = [b"launch", launch.mint.as_ref()], bump)]
+    pub launch: Account<'info, LaunchConfig>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: Validated against launch.mint.
+    pub mint: UncheckedAccount<'info>,
+    /// CHECK: Validated as Pump.fun bonding curve PDA whose creator is sharing_config.
+    pub bonding_curve: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical Pump Fees sharing_config PDA for launch.mint.
+    pub sharing_config: UncheckedAccount<'info>,
+    /// CHECK: Program-derived shareholder account used as the Staked recipient.
+    #[account(mut, seeds = [b"fee-owner", launch.mint.as_ref()], bump)]
+    pub fee_owner: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun creator-vault PDA seeds for sharing_config.
+    #[account(mut)]
+    pub creator_vault: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for creator_vault.
+    #[account(mut)]
+    pub creator_vault_quote_token_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for fee_owner.
+    #[account(mut)]
+    pub fee_owner_token_ata: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds = [
+            b"quote-rewards",
+            launch.key().as_ref(),
+            quote_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub quote_reward_pool: Account<'info, QuoteRewardPool>,
+    /// CHECK: Validated as canonical quote ATA for quote_reward_pool.
+    #[account(mut)]
+    pub quote_reward_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated as quote-protocol-fees PDA.
+    #[account(
+        seeds = [
+            b"quote-protocol-fees",
+            launch.key().as_ref(),
+            quote_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub quote_protocol_fee_authority: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for quote_protocol_fee_authority.
+    #[account(mut)]
+    pub quote_protocol_fee_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated against quote_reward_pool.
+    pub quote_mint: UncheckedAccount<'info>,
+    /// CHECK: Validated against quote_reward_pool.
+    pub quote_token_program: UncheckedAccount<'info>,
+    /// CHECK: Must be the associated token program.
+    pub associated_token_program: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun event-authority PDA seeds.
+    pub pump_event_authority: UncheckedAccount<'info>,
+    /// CHECK: Must be the official Pump.fun program id.
+    pub pump_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct ClaimPumpSwapCreatorFees<'info> {
     #[account(mut, seeds = [b"launch", launch.mint.as_ref()], bump)]
     pub launch: Account<'info, LaunchConfig>,
@@ -365,6 +465,129 @@ pub struct ClaimPumpSwapQuoteCreatorFees<'info> {
     pub pump_amm_event_authority: UncheckedAccount<'info>,
     /// CHECK: Must be the official PumpSwap AMM program id.
     pub pump_amm_program: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimPumpSwapSharedCreatorFees<'info> {
+    #[account(mut, seeds = [b"launch", launch.mint.as_ref()], bump)]
+    pub launch: Account<'info, LaunchConfig>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: Validated as PDA(["protocol-fees", launch.mint]) and stores SOL protocol fees.
+    #[account(mut, seeds = [b"protocol-fees", launch.mint.as_ref()], bump)]
+    pub protocol_fee_vault: UncheckedAccount<'info>,
+    /// CHECK: Validated against launch.mint.
+    pub mint: UncheckedAccount<'info>,
+    /// CHECK: Validated as Pump.fun bonding curve PDA whose creator is sharing_config.
+    pub bonding_curve: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical Pump Fees sharing_config PDA for launch.mint.
+    pub sharing_config: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun creator-vault PDA seeds for sharing_config.
+    #[account(mut)]
+    pub pump_creator_vault: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for pump_creator_vault.
+    #[account(mut)]
+    pub pump_creator_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Must be the native SOL mint because rewards are paid as SOL.
+    pub quote_mint: UncheckedAccount<'info>,
+    /// CHECK: Must be the standard SPL Token program for WSOL.
+    pub quote_token_program: UncheckedAccount<'info>,
+    /// CHECK: Must be the associated token program.
+    pub associated_token_program: UncheckedAccount<'info>,
+    /// CHECK: Program-derived shareholder account used as the Staked recipient.
+    #[account(mut, seeds = [b"fee-owner", launch.mint.as_ref()], bump)]
+    pub fee_owner: UncheckedAccount<'info>,
+    /// CHECK: Validated against PumpSwap creator_vault PDA seeds for sharing_config.
+    #[account(mut)]
+    pub coin_creator_vault_authority: UncheckedAccount<'info>,
+    /// CHECK: Validated as the canonical WSOL ATA for the PumpSwap creator vault authority.
+    #[account(mut)]
+    pub coin_creator_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated as the canonical WSOL ATA for fee_owner, then closed into launch.
+    #[account(mut)]
+    pub fee_owner_wsol_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun event-authority PDA seeds.
+    pub pump_event_authority: UncheckedAccount<'info>,
+    /// CHECK: Must be the official Pump.fun program id.
+    pub pump_program: UncheckedAccount<'info>,
+    /// CHECK: Validated against PumpSwap event-authority PDA seeds.
+    pub pump_amm_event_authority: UncheckedAccount<'info>,
+    /// CHECK: Must be the official PumpSwap AMM program id.
+    pub pump_amm_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimPumpSwapSharedQuoteCreatorFees<'info> {
+    #[account(mut, seeds = [b"launch", launch.mint.as_ref()], bump)]
+    pub launch: Account<'info, LaunchConfig>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: Validated against launch.mint.
+    pub mint: UncheckedAccount<'info>,
+    /// CHECK: Validated as Pump.fun bonding curve PDA whose creator is sharing_config.
+    pub bonding_curve: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical Pump Fees sharing_config PDA for launch.mint.
+    pub sharing_config: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun creator-vault PDA seeds for sharing_config.
+    #[account(mut)]
+    pub pump_creator_vault: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for pump_creator_vault.
+    #[account(mut)]
+    pub pump_creator_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Program-derived shareholder account used as the Staked recipient.
+    #[account(mut, seeds = [b"fee-owner", launch.mint.as_ref()], bump)]
+    pub fee_owner: UncheckedAccount<'info>,
+    /// CHECK: Validated against PumpSwap creator_vault PDA seeds for sharing_config.
+    #[account(mut)]
+    pub coin_creator_vault_authority: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for PumpSwap creator vault authority.
+    #[account(mut)]
+    pub coin_creator_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for fee_owner.
+    #[account(mut)]
+    pub fee_owner_token_ata: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds = [
+            b"quote-rewards",
+            launch.key().as_ref(),
+            quote_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub quote_reward_pool: Account<'info, QuoteRewardPool>,
+    /// CHECK: Validated as canonical quote ATA for quote_reward_pool.
+    #[account(mut)]
+    pub quote_reward_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated as quote-protocol-fees PDA.
+    #[account(
+        seeds = [
+            b"quote-protocol-fees",
+            launch.key().as_ref(),
+            quote_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub quote_protocol_fee_authority: UncheckedAccount<'info>,
+    /// CHECK: Validated as canonical quote ATA for quote_protocol_fee_authority.
+    #[account(mut)]
+    pub quote_protocol_fee_vault_ata: UncheckedAccount<'info>,
+    /// CHECK: Validated against quote_reward_pool.
+    pub quote_mint: UncheckedAccount<'info>,
+    /// CHECK: Validated against quote_reward_pool.
+    pub quote_token_program: UncheckedAccount<'info>,
+    /// CHECK: Must be the associated token program.
+    pub associated_token_program: UncheckedAccount<'info>,
+    /// CHECK: Validated against Pump.fun event-authority PDA seeds.
+    pub pump_event_authority: UncheckedAccount<'info>,
+    /// CHECK: Must be the official Pump.fun program id.
+    pub pump_program: UncheckedAccount<'info>,
+    /// CHECK: Validated against PumpSwap event-authority PDA seeds.
+    pub pump_amm_event_authority: UncheckedAccount<'info>,
+    /// CHECK: Must be the official PumpSwap AMM program id.
+    pub pump_amm_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]

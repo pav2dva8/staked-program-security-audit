@@ -16,7 +16,7 @@ mod tests;
 
 use account_contexts::*;
 
-declare_id!("3skopQVdqns5x5GjU2c3S4nEcmVbDTkMoZWRaVLsJrAa");
+declare_id!("aZPKJ99yjfE6MjZ5isXNjm3ndanBdx5gX35nwmLBANK");
 
 #[program]
 pub mod staked {
@@ -60,6 +60,18 @@ pub mod staked {
         crate::instructions::fees::claim_pump_quote_creator_fees(ctx)
     }
 
+    pub fn claim_pump_shared_creator_fees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ClaimPumpSharedCreatorFees<'info>>,
+    ) -> Result<()> {
+        crate::instructions::fees::claim_pump_shared_creator_fees(ctx)
+    }
+
+    pub fn claim_pump_shared_quote_creator_fees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ClaimPumpSharedQuoteCreatorFees<'info>>,
+    ) -> Result<()> {
+        crate::instructions::fees::claim_pump_shared_quote_creator_fees(ctx)
+    }
+
     pub fn claim_pumpswap_creator_fees(ctx: Context<ClaimPumpSwapCreatorFees>) -> Result<()> {
         crate::instructions::fees::claim_pumpswap_creator_fees(ctx)
     }
@@ -68,6 +80,18 @@ pub mod staked {
         ctx: Context<ClaimPumpSwapQuoteCreatorFees>,
     ) -> Result<()> {
         crate::instructions::fees::claim_pumpswap_quote_creator_fees(ctx)
+    }
+
+    pub fn claim_pumpswap_shared_creator_fees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ClaimPumpSwapSharedCreatorFees<'info>>,
+    ) -> Result<()> {
+        crate::instructions::fees::claim_pumpswap_shared_creator_fees(ctx)
+    }
+
+    pub fn claim_pumpswap_shared_quote_creator_fees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ClaimPumpSwapSharedQuoteCreatorFees<'info>>,
+    ) -> Result<()> {
+        crate::instructions::fees::claim_pumpswap_shared_quote_creator_fees(ctx)
     }
 
     pub fn claim_quote_protocol_fees(ctx: Context<ClaimQuoteProtocolFees>) -> Result<()> {

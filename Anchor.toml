@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-staked = "3skopQVdqns5x5GjU2c3S4nEcmVbDTkMoZWRaVLsJrAa"
+staked = "aZPKJ99yjfE6MjZ5isXNjm3ndanBdx5gX35nwmLBANK"
 
 [registry]
 url = "https://api.apr.dev"
