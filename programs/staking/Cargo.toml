@@ -22,3 +22,4 @@ no-log-ix-name = []
 
 [dependencies]
 anchor-lang = "0.32.1"
+solana-security-txt = "1.1.3"

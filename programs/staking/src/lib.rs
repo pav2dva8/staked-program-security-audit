@@ -18,6 +18,17 @@ use account_contexts::*;
 
 declare_id!("aZPKJ99yjfE6MjZ5isXNjm3ndanBdx5gX35nwmLBANK");
 
+#[cfg(not(feature = "no-entrypoint"))]
+solana_security_txt::security_txt! {
+    name: "Staked",
+    project_url: "https://github.com/iceypump/staked",
+    contacts: "twitter:https://x.com/iceyypump,link:https://github.com/iceypump/staked/security/policy",
+    policy: "https://github.com/iceypump/staked/security/policy",
+    preferred_languages: "en",
+    source_code: "https://github.com/iceypump/staked",
+    auditors: "None"
+}
+
 #[program]
 pub mod staked {
     use super::*;
