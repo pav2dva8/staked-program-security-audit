@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 pub(crate) const ACC_REWARD_PRECISION: u128 = 1_000_000_000_000_000_000;
 pub(crate) const BPS_DENOMINATOR: u128 = 10_000;
+pub(crate) const MAIN_REWARD_BPS: u64 = 500;
 pub(crate) const PROTOCOL_FEE_BPS: u64 = 2_500;
 pub(crate) const DAY_SECONDS: i64 = 86_400;
 pub(crate) const ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey =
@@ -15,6 +16,8 @@ pub(crate) const TOKEN_PROGRAM_ID: Pubkey = pubkey!("TokenkegQfeZyiNwAJbNbGKPFXC
 pub(crate) const TOKEN_2022_PROGRAM_ID: Pubkey =
     pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 pub(crate) const NATIVE_MINT_ID: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
+pub(crate) const STAKE_MAIN_MINT_ID: Pubkey =
+    pubkey!("5s7tf6ih2CEZf7ZPNkJAtcknAq9DL5GsWHMMT3Jdpump");
 pub(crate) const SPL_TOKEN_TRANSFER_IX: u8 = 3;
 pub(crate) const SPL_TOKEN_CLOSE_ACCOUNT_IX: u8 = 9;
 pub(crate) const PUMP_COLLECT_CREATOR_FEE_IX: [u8; 8] = [20, 22, 86, 123, 198, 28, 219, 132];
@@ -31,8 +34,12 @@ pub(crate) const PUMP_FEES_SHARING_CONFIG_STATUS_OFFSET: usize = 8 + 1 + 1;
 pub(crate) const PUMP_FEES_SHARING_CONFIG_ACTIVE_STATUS: u8 = 1;
 pub(crate) const PUMP_FEES_SHARING_CONFIG_MINT_OFFSET: usize =
     PUMP_FEES_SHARING_CONFIG_STATUS_OFFSET + 1;
+pub(crate) const PUMP_FEES_SHARING_CONFIG_ADMIN_OFFSET: usize =
+    PUMP_FEES_SHARING_CONFIG_MINT_OFFSET + PUBKEY_BYTES;
+pub(crate) const PUMP_FEES_SHARING_CONFIG_ADMIN_REVOKED_OFFSET: usize =
+    PUMP_FEES_SHARING_CONFIG_ADMIN_OFFSET + PUBKEY_BYTES;
 pub(crate) const PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET: usize =
-    PUMP_FEES_SHARING_CONFIG_MINT_OFFSET + PUBKEY_BYTES + PUBKEY_BYTES + 1;
+    PUMP_FEES_SHARING_CONFIG_ADMIN_REVOKED_OFFSET + 1;
 pub(crate) const PUMP_FEES_SHAREHOLDER_LEN: usize = PUBKEY_BYTES + 2;
 pub(crate) const MINT_LEN: usize = 82;
 pub(crate) const MINT_IS_INITIALIZED_OFFSET: usize = 45;

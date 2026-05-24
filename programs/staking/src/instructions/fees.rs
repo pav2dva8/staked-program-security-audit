@@ -7,7 +7,10 @@ use anchor_lang::solana_program::{
 use crate::{
     account_contexts::*, constants::*, errors::PobError, guards::*, pda::*, rewards::*, token::*,
 };
-pub(crate) fn claim_pump_creator_fees(ctx: Context<ClaimPumpCreatorFees>) -> Result<()> {
+
+pub(crate) fn claim_pump_creator_fees<'info>(
+    ctx: Context<'_, '_, 'info, 'info, ClaimPumpCreatorFees<'info>>,
+) -> Result<()> {
     require!(
         ctx.accounts.launch.total_weighted_stake > 0,
         PobError::NoActiveStake
@@ -81,8 +84,11 @@ pub(crate) fn claim_pump_creator_fees(ctx: Context<ClaimPumpCreatorFees>) -> Res
     )?;
     require!(amount > 0, PobError::NoRewards);
 
-    apply_rewards_with_protocol_fee(
+    let (main_launch_info, _) =
+        main_reward_remaining_accounts(&ctx.accounts.launch, ctx.remaining_accounts)?;
+    apply_rewards_with_protocol_fee_and_main_reward(
         &mut ctx.accounts.launch,
+        main_launch_info,
         &ctx.accounts.protocol_fee_vault.to_account_info(),
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
@@ -274,12 +280,13 @@ pub(crate) fn claim_pump_shared_creator_fees<'info>(
         &ctx.accounts.protocol_fee_vault.to_account_info(),
         &ctx.accounts.launch.mint,
     )?;
-
     let fee_owner_rent_floor = ensure_fee_owner_rent_exempt(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.fee_owner.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
     )?;
+    let (main_launch_info, shareholder_accounts) =
+        main_reward_remaining_accounts(&ctx.accounts.launch, ctx.remaining_accounts)?;
 
     distribute_pump_creator_fees_v2(
         &ctx.accounts.payer.to_account_info(),
@@ -298,7 +305,7 @@ pub(crate) fn claim_pump_shared_creator_fees<'info>(
         ShareholderAccountMode::System {
             fee_owner: ctx.accounts.fee_owner.to_account_info(),
         },
-        ctx.remaining_accounts,
+        shareholder_accounts,
     )?;
 
     let amount = sweep_fee_owner_to_launch(
@@ -311,8 +318,9 @@ pub(crate) fn claim_pump_shared_creator_fees<'info>(
     )?;
     require!(amount > 0, PobError::NoRewards);
 
-    apply_rewards_with_protocol_fee(
+    apply_rewards_with_protocol_fee_and_main_reward(
         &mut ctx.accounts.launch,
+        main_launch_info,
         &ctx.accounts.protocol_fee_vault.to_account_info(),
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
@@ -436,7 +444,9 @@ pub(crate) fn claim_pump_shared_quote_creator_fees<'info>(
     Ok(())
 }
 
-pub(crate) fn claim_pumpswap_creator_fees(ctx: Context<ClaimPumpSwapCreatorFees>) -> Result<()> {
+pub(crate) fn claim_pumpswap_creator_fees<'info>(
+    ctx: Context<'_, '_, 'info, 'info, ClaimPumpSwapCreatorFees<'info>>,
+) -> Result<()> {
     require!(
         ctx.accounts.launch.total_weighted_stake > 0,
         PobError::NoActiveStake
@@ -530,8 +540,11 @@ pub(crate) fn claim_pumpswap_creator_fees(ctx: Context<ClaimPumpSwapCreatorFees>
     )?;
     require!(reward_lamports > 0, PobError::NoRewards);
 
-    apply_rewards_with_protocol_fee(
+    let (main_launch_info, _) =
+        main_reward_remaining_accounts(&ctx.accounts.launch, ctx.remaining_accounts)?;
+    apply_rewards_with_protocol_fee_and_main_reward(
         &mut ctx.accounts.launch,
+        main_launch_info,
         &ctx.accounts.protocol_fee_vault.to_account_info(),
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
@@ -718,7 +731,8 @@ pub(crate) fn claim_pumpswap_shared_creator_fees<'info>(
         &ctx.accounts.protocol_fee_vault.to_account_info(),
         &ctx.accounts.launch.mint,
     )?;
-
+    let (main_launch_info, shareholder_accounts) =
+        main_reward_remaining_accounts(&ctx.accounts.launch, ctx.remaining_accounts)?;
     transfer_pumpswap_creator_fees_to_pump_v2(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.quote_mint.to_account_info(),
@@ -753,7 +767,7 @@ pub(crate) fn claim_pumpswap_shared_creator_fees<'info>(
             quote_mint: ctx.accounts.quote_mint.key(),
             quote_token_program: ctx.accounts.quote_token_program.key(),
         },
-        ctx.remaining_accounts,
+        shareholder_accounts,
     )?;
 
     let collected_wsol = token_account_amount(&ctx.accounts.fee_owner_wsol_ata.to_account_info())?;
@@ -773,8 +787,9 @@ pub(crate) fn claim_pumpswap_shared_creator_fees<'info>(
     )?;
     require!(reward_lamports > 0, PobError::NoRewards);
 
-    apply_rewards_with_protocol_fee(
+    apply_rewards_with_protocol_fee_and_main_reward(
         &mut ctx.accounts.launch,
+        main_launch_info,
         &ctx.accounts.protocol_fee_vault.to_account_info(),
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),

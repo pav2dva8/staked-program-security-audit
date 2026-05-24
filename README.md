@@ -61,7 +61,7 @@ Pump.fun-launched tokens for fixed lock periods and receive rewards from creator
 The program uses a per-mint `fee_owner` PDA so Pump.fun and PumpSwap creator fees can be routed into
 staking rewards through bounded on-chain instructions instead of being controlled by a human wallet.
 It supports legacy SPL Token and Token-2022 staking mints, SOL rewards, quote-token rewards, WSOL
-unwrapping, and protocol-fee routing.
+unwrapping, protocol-fee routing, and fixed STAKE main-coin reward routing from SOL creator fees.
 
 Current status:
 
@@ -207,6 +207,9 @@ main instructions:
 - `claim_quote_protocol_fees`
 
 _For more details, see the [program documentation](programs/staking/README.md)._
+
+SOL creator-fee claims route 25% to protocol fees, then route 5% of the remaining amount to the
+fixed STAKE main-coin reward pool. The rest stays in the claimed launch's SOL reward pool.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

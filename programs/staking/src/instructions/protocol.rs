@@ -5,10 +5,11 @@ use crate::{
     account_contexts::*,
     errors::PobError,
     guards::*,
-    pda::*,
+    pda::quote_protocol_fee_authority_pda,
     rewards::protocol_fee_vault_claimable,
     token::{require_associated_token_account, token_account_amount, transfer_spl_tokens},
 };
+
 pub(crate) fn claim_quote_protocol_fees(ctx: Context<ClaimQuoteProtocolFees>) -> Result<()> {
     require_program_upgrade_authority(
         &ctx.accounts.program.to_account_info(),

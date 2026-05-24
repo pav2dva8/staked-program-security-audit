@@ -3,8 +3,12 @@ use anchor_lang::prelude::*;
 use crate::{constants::*, guards::*, pda::*, rewards::*, state::*, token::*};
 
 fn test_launch(total_weighted_stake: u128) -> LaunchConfig {
+    test_launch_for_mint_and_stake(Pubkey::new_from_array([7; 32]), total_weighted_stake)
+}
+
+fn test_launch_for_mint_and_stake(mint: Pubkey, total_weighted_stake: u128) -> LaunchConfig {
     LaunchConfig {
-        mint: Pubkey::new_from_array([7; 32]),
+        mint,
         token_program: TOKEN_2022_PROGRAM_ID,
         total_weighted_stake,
         acc_reward_per_weight: 0,
@@ -37,10 +41,24 @@ fn write_bonding_curve_data(data: &mut [u8], creator: &Pubkey) {
 }
 
 fn write_sharing_config_data(data: &mut [u8], mint: &Pubkey, shareholders: &[(Pubkey, u16)]) {
+    write_sharing_config_data_with_admin(data, mint, &Pubkey::default(), false, shareholders);
+}
+
+fn write_sharing_config_data_with_admin(
+    data: &mut [u8],
+    mint: &Pubkey,
+    admin: &Pubkey,
+    admin_revoked: bool,
+    shareholders: &[(Pubkey, u16)],
+) {
     data[..8].copy_from_slice(&PUMP_FEES_SHARING_CONFIG_DISCRIMINATOR);
     data[PUMP_FEES_SHARING_CONFIG_STATUS_OFFSET] = PUMP_FEES_SHARING_CONFIG_ACTIVE_STATUS;
     data[PUMP_FEES_SHARING_CONFIG_MINT_OFFSET..PUMP_FEES_SHARING_CONFIG_MINT_OFFSET + PUBKEY_BYTES]
         .copy_from_slice(mint.as_ref());
+    data[PUMP_FEES_SHARING_CONFIG_ADMIN_OFFSET
+        ..PUMP_FEES_SHARING_CONFIG_ADMIN_OFFSET + PUBKEY_BYTES]
+        .copy_from_slice(admin.as_ref());
+    data[PUMP_FEES_SHARING_CONFIG_ADMIN_REVOKED_OFFSET] = u8::from(admin_revoked);
     data[PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET
         ..PUMP_FEES_SHARING_CONFIG_SHAREHOLDERS_OFFSET + 4]
         .copy_from_slice(&(shareholders.len() as u32).to_le_bytes());
@@ -212,6 +230,14 @@ fn weighted_amount_uses_basis_points() {
 }
 
 #[test]
+fn existing_account_layout_sizes_remain_unchanged() {
+    assert_eq!(LaunchConfig::INIT_SPACE, 104);
+    assert_eq!(StakePosition::INIT_SPACE, 48);
+    assert_eq!(QuoteRewardPool::INIT_SPACE, 136);
+    assert_eq!(QuoteStakeState::INIT_SPACE, 96);
+}
+
+#[test]
 fn rewards_split_by_weight() {
     let mut launch = test_launch(300);
     let lighter = test_position(100, 0);
@@ -229,6 +255,65 @@ fn protocol_fee_is_twenty_five_percent_rounded_down() {
     assert_eq!(protocol_fee_amount(1_000).unwrap(), 250);
     assert_eq!(protocol_fee_amount(101).unwrap(), 25);
     assert_eq!(protocol_fee_amount(3).unwrap(), 0);
+}
+
+#[test]
+fn reward_split_routes_five_percent_to_main_reward_after_protocol_fee() {
+    let split = reward_split_amounts(10_000).unwrap();
+
+    assert_eq!(split.protocol_fee, 2_500);
+    assert_eq!(split.main_reward_amount, 375);
+    assert_eq!(split.reward_amount, 7_125);
+}
+
+#[test]
+fn reward_split_rounds_main_reward_down() {
+    let split = reward_split_amounts(101).unwrap();
+
+    assert_eq!(split.protocol_fee, 25);
+    assert_eq!(split.main_reward_amount, 3);
+    assert_eq!(split.reward_amount, 73);
+}
+
+#[test]
+fn reward_split_state_applies_only_source_launch_share() {
+    let mut launch = test_launch(100);
+    let split = reward_split_amounts(10_000).unwrap();
+
+    apply_reward_split_to_state(&mut launch, split).unwrap();
+
+    assert_eq!(launch.reward_reserve, 7_125);
+}
+
+#[test]
+fn main_coin_source_keeps_full_post_protocol_reward_share() {
+    let mut launch = test_launch_for_mint_and_stake(STAKE_MAIN_MINT_ID, 100);
+    let split = reward_split_amounts(10_000).unwrap();
+    let reward_amount = split
+        .reward_amount
+        .checked_add(split.main_reward_amount)
+        .unwrap();
+
+    apply_rewards(&mut launch, reward_amount).unwrap();
+
+    assert_eq!(launch.reward_reserve, 7_500);
+}
+
+#[test]
+fn non_main_launch_requires_main_reward_pool_account() {
+    let launch = test_launch(100);
+
+    assert!(main_reward_remaining_accounts(&launch, &[]).is_err());
+}
+
+#[test]
+fn main_launch_does_not_consume_a_remaining_account_for_main_rewards() {
+    let launch = test_launch_for_mint_and_stake(STAKE_MAIN_MINT_ID, 100);
+    let (main_launch_info, shareholder_accounts) =
+        main_reward_remaining_accounts(&launch, &[]).unwrap();
+
+    assert!(main_launch_info.is_none());
+    assert!(shareholder_accounts.is_empty());
 }
 
 #[test]

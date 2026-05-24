@@ -18,4 +18,5 @@ pub enum PobError {
     InvalidProtocolFeeVault,
     InvalidProgramAccount,
     UnauthorizedProtocolFeeClaim,
+    InvalidMainRewardPool,
 }

@@ -34,6 +34,7 @@ independent review.
 - WSOL rewards from PumpSwap `collect_coin_creator_fee`, unwrapped into SOL.
 - Non-WSOL PumpSwap quote-token rewards.
 - 25% protocol-fee routing for SOL and quote-token reward streams.
+- Fixed 5% STAKE main-coin reward routing from post-protocol SOL creator fees.
 - Protocol-fee claims gated by the program upgrade authority.
 
 ## Core Accounts
@@ -137,14 +138,20 @@ paths:
 | `claim_pumpswap_shared_quote_creator_fees` | PumpSwap `transfer_creator_fees_to_pump_v2`, then Pump.fun `distribute_creator_fees_v2` | Non-native quote token |
 
 All creator-fee claim paths require active stake and split out a 25% protocol fee before applying
-rewards to stakers.
+rewards to stakers. SOL reward paths route 5% of the post-protocol SOL amount to the fixed STAKE
+main-coin launch reward pool (`5s7tf6ih2CEZf7ZPNkJAtcknAq9DL5GsWHMMT3Jdpump`) and credit the
+remaining 95% to the claimed launch's staker rewards. If the claimed launch is the STAKE main-coin
+launch, the full post-protocol SOL amount stays in that same reward pool. For non-STAKE SOL claims,
+the first remaining account must be the STAKE main launch PDA (`PDA(["launch", STAKE_MAIN_MINT])`).
+Quote-token paths are unchanged and route post-protocol quote tokens to the quote reward pool.
 
 Shared claim instructions validate the canonical `sharing_config` account, require it to be active,
 require shareholder shares to sum to 10,000 bps, and require `fee_owner` to have a non-zero share.
 If there are shareholders other than `fee_owner`, pass their writable recipient accounts as remaining
-accounts in the same order as the `sharing_config.shareholders` vector. For SOL distributions the
-recipient account is the shareholder wallet. For quote-token distributions the recipient account is
-the shareholder ATA for `quote_mint` and `quote_token_program`.
+accounts in the same order as the `sharing_config.shareholders` vector. For non-STAKE SOL
+distributions, put the STAKE main launch account first, followed by those shareholder accounts. For
+SOL distributions the recipient account is the shareholder wallet. For quote-token distributions the
+recipient account is the shareholder ATA for `quote_mint` and `quote_token_program`.
 
 SOL rewards are held in the `LaunchConfig` account and paid by `claim_rewards` when no remaining
 accounts are supplied. Quote-token rewards use `QuoteRewardPool` and `QuoteStakeState`; to claim a
@@ -192,6 +199,8 @@ quote_stake
   Token-2022 mints without assuming `Tokenkeg`.
 - Reward payouts are bounded by tracked reserves.
 - Protocol-fee withdrawals require the current upgrade authority of this program.
+- Non-STAKE SOL fee claims require the canonical STAKE main launch account before creator-shareholder
+  remaining accounts, so the fixed main reward share cannot be redirected.
 
 See `../../docs/staking-architecture.md` and `../../docs/staking-security-audit.md` for design notes
 and known risks.

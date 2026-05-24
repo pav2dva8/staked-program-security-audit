@@ -65,20 +65,78 @@ pub(crate) fn apply_rewards(launch: &mut LaunchConfig, amount: u64) -> Result<()
     Ok(())
 }
 
-pub(crate) fn apply_rewards_with_protocol_fee<'info>(
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct RewardSplitAmounts {
+    pub protocol_fee: u64,
+    pub main_reward_amount: u64,
+    pub reward_amount: u64,
+}
+
+pub(crate) fn reward_split_amounts(amount: u64) -> Result<RewardSplitAmounts> {
+    require!(amount > 0, PobError::NoRewards);
+
+    let protocol_fee = protocol_fee_amount(amount)?;
+    let post_protocol = amount
+        .checked_sub(protocol_fee)
+        .ok_or(PobError::MathOverflow)?;
+    let main_reward_amount = (post_protocol as u128)
+        .checked_mul(MAIN_REWARD_BPS as u128)
+        .ok_or(PobError::MathOverflow)?
+        .checked_div(BPS_DENOMINATOR)
+        .ok_or(PobError::MathOverflow)?;
+    let main_reward_amount =
+        u64::try_from(main_reward_amount).map_err(|_| PobError::MathOverflow)?;
+    let reward_amount = post_protocol
+        .checked_sub(main_reward_amount)
+        .ok_or(PobError::MathOverflow)?;
+
+    Ok(RewardSplitAmounts {
+        protocol_fee,
+        main_reward_amount,
+        reward_amount,
+    })
+}
+
+pub(crate) fn apply_reward_split_to_state(
+    launch: &mut LaunchConfig,
+    split: RewardSplitAmounts,
+) -> Result<()> {
+    if split.reward_amount > 0 {
+        apply_rewards(launch, split.reward_amount)?;
+    }
+
+    Ok(())
+}
+
+pub(crate) fn main_reward_remaining_accounts<'info>(
+    launch: &LaunchConfig,
+    remaining_accounts: &'info [AccountInfo<'info>],
+) -> Result<(
+    Option<&'info AccountInfo<'info>>,
+    &'info [AccountInfo<'info>],
+)> {
+    if launch.mint == STAKE_MAIN_MINT_ID {
+        return Ok((None, remaining_accounts));
+    }
+
+    let (main_launch, rest) = remaining_accounts
+        .split_first()
+        .ok_or(PobError::InvalidMainRewardPool)?;
+    Ok((Some(main_launch), rest))
+}
+
+pub(crate) fn apply_rewards_with_protocol_fee_and_main_reward<'info>(
     launch: &mut Account<'info, LaunchConfig>,
+    main_launch_info: Option<&'info AccountInfo<'info>>,
     protocol_fee_vault: &AccountInfo<'info>,
     payer: &AccountInfo<'info>,
     system_program_info: &AccountInfo<'info>,
     protocol_fee_vault_bump: u8,
     amount: u64,
 ) -> Result<()> {
-    let protocol_fee = protocol_fee_amount(amount)?;
-    let reward_amount = amount
-        .checked_sub(protocol_fee)
-        .ok_or(PobError::MathOverflow)?;
+    let split = reward_split_amounts(amount)?;
 
-    if protocol_fee > 0 {
+    if split.protocol_fee > 0 {
         ensure_protocol_fee_vault(
             payer,
             protocol_fee_vault,
@@ -86,10 +144,70 @@ pub(crate) fn apply_rewards_with_protocol_fee<'info>(
             &launch.mint,
             protocol_fee_vault_bump,
         )?;
-        move_lamports(&launch.to_account_info(), protocol_fee_vault, protocol_fee)?;
+        move_lamports(
+            &launch.to_account_info(),
+            protocol_fee_vault,
+            split.protocol_fee,
+        )?;
     }
 
-    apply_rewards(launch, reward_amount)
+    if launch.mint == STAKE_MAIN_MINT_ID {
+        let reward_amount = split
+            .reward_amount
+            .checked_add(split.main_reward_amount)
+            .ok_or(PobError::MathOverflow)?;
+        if reward_amount > 0 {
+            apply_rewards(launch, reward_amount)?;
+        }
+        return Ok(());
+    }
+
+    apply_reward_split_to_state(launch, split)?;
+
+    if split.main_reward_amount > 0 {
+        let main_launch_info = main_launch_info.ok_or(PobError::InvalidMainRewardPool)?;
+        require_main_reward_pool(main_launch_info)?;
+        move_lamports(
+            &launch.to_account_info(),
+            main_launch_info,
+            split.main_reward_amount,
+        )?;
+
+        let mut main_launch = Account::<LaunchConfig>::try_from(main_launch_info)?;
+        apply_rewards(&mut main_launch, split.main_reward_amount)?;
+        main_launch.exit(&crate::ID)?;
+    }
+
+    Ok(())
+}
+
+fn require_main_reward_pool<'info>(main_launch_info: &'info AccountInfo<'info>) -> Result<()> {
+    let expected_launch =
+        Pubkey::find_program_address(&[b"launch", STAKE_MAIN_MINT_ID.as_ref()], &crate::ID).0;
+
+    require_keys_eq!(
+        main_launch_info.key(),
+        expected_launch,
+        PobError::InvalidMainRewardPool
+    );
+    require!(
+        main_launch_info.is_writable,
+        PobError::InvalidMainRewardPool
+    );
+    require_keys_eq!(
+        *main_launch_info.owner,
+        crate::ID,
+        PobError::InvalidMainRewardPool
+    );
+
+    let main_launch = Account::<LaunchConfig>::try_from(main_launch_info)?;
+    require_keys_eq!(
+        main_launch.mint,
+        STAKE_MAIN_MINT_ID,
+        PobError::InvalidMainRewardPool
+    );
+
+    Ok(())
 }
 
 pub(crate) fn protocol_fee_amount(amount: u64) -> Result<u64> {

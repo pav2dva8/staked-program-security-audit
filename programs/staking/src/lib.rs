@@ -63,7 +63,9 @@ pub mod staked {
         crate::instructions::staking::unstake(ctx)
     }
 
-    pub fn claim_pump_creator_fees(ctx: Context<ClaimPumpCreatorFees>) -> Result<()> {
+    pub fn claim_pump_creator_fees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ClaimPumpCreatorFees<'info>>,
+    ) -> Result<()> {
         crate::instructions::fees::claim_pump_creator_fees(ctx)
     }
 
@@ -83,7 +85,9 @@ pub mod staked {
         crate::instructions::fees::claim_pump_shared_quote_creator_fees(ctx)
     }
 
-    pub fn claim_pumpswap_creator_fees(ctx: Context<ClaimPumpSwapCreatorFees>) -> Result<()> {
+    pub fn claim_pumpswap_creator_fees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ClaimPumpSwapCreatorFees<'info>>,
+    ) -> Result<()> {
         crate::instructions::fees::claim_pumpswap_creator_fees(ctx)
     }
 
