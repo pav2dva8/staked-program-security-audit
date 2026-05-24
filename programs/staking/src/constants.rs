@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 pub(crate) const ACC_REWARD_PRECISION: u128 = 1_000_000_000_000_000_000;
 pub(crate) const BPS_DENOMINATOR: u128 = 10_000;
-pub(crate) const PROTOCOL_FEE_BPS: u64 = 500;
+pub(crate) const PROTOCOL_FEE_BPS: u64 = 2_500;
 pub(crate) const DAY_SECONDS: i64 = 86_400;
 pub(crate) const ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey =
     pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");

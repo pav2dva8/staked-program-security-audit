@@ -33,7 +33,7 @@ independent review.
 - Quote-token rewards from Pump.fun `collect_creator_fee_v2`.
 - WSOL rewards from PumpSwap `collect_coin_creator_fee`, unwrapped into SOL.
 - Non-WSOL PumpSwap quote-token rewards.
-- 5% protocol-fee routing for SOL and quote-token reward streams.
+- 25% protocol-fee routing for SOL and quote-token reward streams.
 - Protocol-fee claims gated by the program upgrade authority.
 
 ## Core Accounts
@@ -136,7 +136,7 @@ paths:
 | `claim_pumpswap_shared_creator_fees` | PumpSwap `transfer_creator_fees_to_pump_v2`, then Pump.fun `distribute_creator_fees_v2` | WSOL unwrapped into SOL |
 | `claim_pumpswap_shared_quote_creator_fees` | PumpSwap `transfer_creator_fees_to_pump_v2`, then Pump.fun `distribute_creator_fees_v2` | Non-native quote token |
 
-All creator-fee claim paths require active stake and split out a 5% protocol fee before applying
+All creator-fee claim paths require active stake and split out a 25% protocol fee before applying
 rewards to stakers.
 
 Shared claim instructions validate the canonical `sharing_config` account, require it to be active,

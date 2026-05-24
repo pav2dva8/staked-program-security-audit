@@ -225,10 +225,10 @@ fn rewards_split_by_weight() {
 }
 
 #[test]
-fn protocol_fee_is_five_percent_rounded_down() {
-    assert_eq!(protocol_fee_amount(1_000).unwrap(), 50);
-    assert_eq!(protocol_fee_amount(101).unwrap(), 5);
-    assert_eq!(protocol_fee_amount(19).unwrap(), 0);
+fn protocol_fee_is_twenty_five_percent_rounded_down() {
+    assert_eq!(protocol_fee_amount(1_000).unwrap(), 250);
+    assert_eq!(protocol_fee_amount(101).unwrap(), 25);
+    assert_eq!(protocol_fee_amount(3).unwrap(), 0);
 }
 
 #[test]
